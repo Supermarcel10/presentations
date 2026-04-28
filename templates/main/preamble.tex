@@ -1,0 +1,100 @@
+% PACKAGES & CONFIGURATION
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{lstautogobble}
+\usepackage{fancyvrb}
+
+% THEME & COLORS
+\mode<presentation>
+{
+\usetheme{default}
+\usecolortheme{default}
+
+% Define custom tech-forward color palette
+\definecolor{PrimaryDark}{HTML}{1e293b}      % Slate 900 - Deep dark for backgrounds
+\definecolor{PrimaryAccent}{HTML}{0ea5e9}    % Sky Blue - Modern accent
+\definecolor{SecondaryAccent}{HTML}{10b981}  % Emerald - Secondary accent
+\definecolor{TextLight}{HTML}{f1f5f9}        % Slate 100 - Light text
+\definecolor{TextDark}{HTML}{1e293b}         % Slate 900 - Dark text
+\definecolor{CodeBg}{HTML}{0f172a}           % Slate 950 - Code background
+\definecolor{CodeText}{HTML}{e2e8f0}         % Slate 200 - Code text
+\definecolor{AlertColor}{HTML}{f97316}       % Orange - For emphasis
+
+% Set overall colors
+\setbeamercolor{background canvas}{bg=PrimaryDark}
+\setbeamercolor{normal text}{fg=TextLight}
+\setbeamercolor{title}{fg=PrimaryAccent, bg=}
+\setbeamercolor{subtitle}{fg=SecondaryAccent}
+\setbeamercolor{structure}{fg=PrimaryAccent}
+\setbeamercolor{alerted text}{fg=AlertColor}
+\setbeamercolor{itemize item}{fg=PrimaryAccent}
+\setbeamercolor{itemize subitem}{fg=SecondaryAccent}
+\setbeamercolor{enumerate item}{fg=PrimaryAccent}
+\setbeamercolor{enumerate subitem}{fg=SecondaryAccent}
+\setbeamercolor{block title}{fg=TextLight, bg=PrimaryAccent}
+\setbeamercolor{block body}{fg=TextLight, bg=}
+\setbeamercolor{footline}{fg=TextLight, bg=}
+\setbeamercolor{frametitle}{fg=PrimaryAccent}
+
+% Set fonts
+\usefonttheme{structurebold}
+\setbeamerfont{frametitle}{size=\large, series=\bfseries}
+\setbeamerfont{title}{size=\Huge, series=\bfseries}
+\setbeamerfont{subtitle}{size=\Large}
+\setbeamerfont{normal text}{size=\normalsize}
+\setbeamerfont{itemize/enumerate body}{size=\large}
+\setbeamerfont{itemize/enumerate subbody}{size=\normalsize}
+
+% Customize templates
+\setbeamertemplate{navigation symbols}{}  % Remove navigation symbols
+\setbeamertemplate{caption}[numbered]
+
+% Custom footer with slide number and author
+\setbeamertemplate{footline}{
+	\leavevmode%
+	\hbox{%
+		\begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,left]{author in head/foot}%
+			\hspace{1ex}\insertshortauthor
+		\end{beamercolorbox}%
+		\begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+			\insertframenumber{}\hspace{1ex}
+		\end{beamercolorbox}}%
+	\vskip0pt%
+}
+
+% Customize frame title style
+\setbeamertemplate{frametitle}{
+\vskip0.5em
+{\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}
+\vskip-0.5em
+{\color{gray}\rule{\linewidth}{0.4pt}}
+}
+}
+
+% CODE HIGHLIGHTING
+
+\lstset{
+	autogobble=true,
+	basicstyle=\ttfamily\small\color{CodeText},
+	backgroundcolor=\color{CodeBg},
+	breaklines=true,
+	captionpos=b,
+	commentstyle=\color{gray},
+	keywordstyle=\color{PrimaryAccent}\bfseries,
+	numberstyle=\tiny\color{gray},
+	stringstyle=\color{SecondaryAccent},
+	showstringspaces=false,
+	frame=single,
+	frameround=tttt,
+	framerule=0pt,
+	rulecolor=\color{gray},
+	xleftmargin=1em,
+	xrightmargin=1em,
+	framexleftmargin=0.8em,
+	framexrightmargin=0.8em,
+}
