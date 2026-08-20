@@ -1,0 +1,790 @@
+\documentclass[aspectratio=169, xcolor=table]{beamer}
+\input{../../../../../templates/main/preamble}
+
+\lstset{
+  language=Terraform,
+  keywordstyle=[2]\color{SecondaryAccent}\bfseries
+}
+
+\title{Terraform, from First Principles}
+\subtitle{The practical fundamentals of infrastructure as code}
+\author{Marcel Barlik}
+\date{18 August 2026}
+
+\begin{document}
+
+\begin{frame}[plain]
+  \titlepage
+\end{frame}
+
+\begin{frame}{Today: 30 Minutes to a Safe First Workflow}
+  \begin{itemize}
+    \item \textbf{What Terraform is} (5 min) --- infrastructure as reviewed, repeatable code
+    \item \textbf{Define the contracts} (8 min) --- providers, resources, inputs and locals
+    \item \textbf{Use the workflow} (8 min) --- init, fmt, validate, plan and apply
+    \item \textbf{Work safely as a team} (5 min) --- state and review
+  \end{itemize}
+
+  \vspace{1em}
+  \begin{alertblock}{Outcome}
+    You will be able to read a Terraform configuration, make a small infrastructure change,
+    review its plan, and know when \emph{not} to apply it.
+  \end{alertblock}
+\end{frame}
+
+\section{Why Terraform?}
+
+\begin{frame}{What Is Terraform?}
+  \begin{block}{Definition}
+    Terraform is an \textbf{Infrastructure as Code (IaC)} tool. The infrastructure and
+    configuration defined in files is the source of truth. Terraform compares that desired
+    state with the real world, and based on this it proposes the necessary changes.
+  \end{block}
+
+  \vspace{0.7em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{It manages}
+    \begin{itemize}
+      \item Cloud resources: networks, compute, storage, databases
+      \item SaaS configuration: dashboards, teams, access controls
+      \item Internal platforms exposed through APIs
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{It gives you}
+    \begin{itemize}
+      \item A version-controlled description of intent
+      \item A preview of changes before they happen
+      \item Repeatable environments and a change history
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Manual Configuration vs.\ Terraform}
+  \begin{columns}[T]
+    \column{0.49\textwidth}
+    \textbf{Clicking in a UI}
+    \begin{itemize}
+      \item Easy to make an unrecorded change
+      \item Hard to reproduce in another environment
+      \item Review happens after the fact
+      \item Restoring a previous layout is manual
+    \end{itemize}
+
+    \column{0.49\textwidth}
+    \textbf{Terraform}
+    \begin{itemize}
+      \item Desired infrastructure lives in Git
+      \item One configuration can target each environment
+      \item \texttt{plan} shows the proposed change first
+      \item History, review and rollback use normal engineering practice
+    \end{itemize}
+  \end{columns}
+
+  \vspace{1em}
+  \textcolor{SecondaryAccent}{\textbf{Terraform does not replace cloud, SaaS, or internal platform.}}
+  It makes the desired configuration explicit and repeatable.
+\end{frame}
+
+\begin{frame}{Terraform vs.\ a Script}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Imperative: describe the steps}
+    \begin{block}{Intent in a script}
+      ``Create a bucket; add these tags; then create a policy.''
+    \end{block}
+    \begin{itemize}
+      \item The author manages ordering and retries
+      \item Re-running safely is extra work
+      \item The script does not inherently know what already exists
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{Declarative: describe the outcome}
+    \begin{block}{Intent in Terraform}
+      ``This bucket, its tags, and its policy should exist.''
+    \end{block}
+    \begin{itemize}
+      \item Terraform builds the dependency graph
+      \item \texttt{plan} calculates the delta from current state
+      \item \texttt{apply} changes only what is needed
+    \end{itemize}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Terraform's Change Flow}
+  \begin{center}
+    \Large \textcolor{PrimaryAccent}{Configure} $\longrightarrow$ \textcolor{SecondaryAccent}{Plan} $\longrightarrow$ \textcolor{AlertColor}{Apply}
+  \end{center}
+
+  \vspace{1em}
+  \begin{columns}[T]
+    \column{0.31\textwidth}
+    \textbf{Configure}
+    \begin{itemize}
+      \item Describe the desired outcome
+      \item Store it in version control
+    \end{itemize}
+
+    \column{0.31\textwidth}
+    \textbf{Plan}
+    \begin{itemize}
+      \item Preview the proposed changes
+      \item Review before anything changes
+    \end{itemize}
+
+    \column{0.31\textwidth}
+    \textbf{Apply}
+    \begin{itemize}
+      \item Make the approved changes
+      \item Verify the resulting infrastructure
+    \end{itemize}
+  \end{columns}
+
+  \vspace{0.8em}
+  \begin{alertblock}{Important boundary}
+    \texttt{plan} is read-only. \texttt{apply} is the explicit step that changes remote infrastructure.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Terraform's Mental Model}
+  Terraform calculates the plan by bringing together desired configuration, its memory of
+  managed objects, and the platform it is managing.
+
+  \vspace{0.7em}
+  \begin{columns}[T]
+    \column{0.32\textwidth}
+    \textbf{Configuration}
+    \begin{itemize}
+      \item \texttt{.tf} files
+      \item Desired infrastructure
+      \item Inputs and rules
+    \end{itemize}
+
+    \column{0.32\textwidth}
+    \textbf{State}
+    \begin{itemize}
+      \item Terraform's record
+      \item Maps code to remote objects
+      \item Enables diffing
+    \end{itemize}
+
+    \column{0.32\textwidth}
+    \textbf{Provider APIs}
+    \begin{itemize}
+      \item Cloud, SaaS, or internal APIs
+      \item Reads actual state
+      \item Creates or updates objects
+    \end{itemize}
+  \end{columns}
+
+  \vspace{0.8em}
+  \begin{block}{The key idea}
+    Terraform converges the remote system toward the configuration. It is not a script
+    that blindly re-runs every line.
+  \end{block}
+\end{frame}
+
+\section{Define the contracts}
+
+\begin{frame}{Start with Four Building Blocks}
+  Most Terraform configuration is easier to read once four words are clear.
+
+  \vspace{0.8em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \begin{block}{Provider}
+      The plugin that speaks to a platform's API.
+    \end{block}
+    \begin{block}{Resource}
+      A remote object Terraform is responsible for.
+    \end{block}
+
+    \column{0.48\textwidth}
+    \begin{block}{Variable}
+      A value supplied from outside the module.
+    \end{block}
+    \begin{block}{Local value}
+      A value calculated and named inside the module.
+    \end{block}
+  \end{columns}
+
+  \vspace{2em}
+  We will build one small configuration using each block in that order.
+\end{frame}
+
+\begin{frame}{A Provider Is Terraform's API Adapter}
+  Terraform Core understands configuration, state and the plan. A \textbf{provider}
+  understands a particular remote system.
+
+  \vspace{0.8em}
+  \begin{center}
+    \texttt{Terraform Core}
+    \quad $\longleftrightarrow$ \quad
+    \textcolor{SecondaryAccent}{\texttt{AWS provider}}
+    \quad $\longleftrightarrow$ \quad
+    \texttt{AWS APIs}
+  \end{center}
+
+  \vspace{1em}
+  The provider defines:
+  \begin{itemize}
+    \item which \textbf{resource} types Terraform can manage;
+    \item which settings those \textbf{resources} accept; and
+    \item how to read, create, update and delete them through the API.
+  \end{itemize}
+
+  \begin{block}{Examples}
+    AWS, Azure, GitHub, Datadog and many internal platforms can all have providers.
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{A Provider Has Two Separate Contracts}
+  \begin{columns}[T]
+    \column{0.49\textwidth}
+    \textbf{1. Require the plugin}
+    \begin{lstlisting}[basicstyle=\ttfamily\tiny\color{CodeText}]
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+    \end{lstlisting}
+    \small Which provider may Terraform install?
+
+    \column{0.49\textwidth}
+    \textbf{2. Configure the connection}
+    \begin{lstlisting}[basicstyle=\ttfamily\tiny\color{CodeText}]
+provider "aws" {
+  region = var.aws_region
+}
+    \end{lstlisting}
+    \small How should this module use that provider?
+  \end{columns}
+
+  \vspace{0.8em}
+  \begin{alertblock}{Keep identity outside the code}
+    Region and other non-secret settings may be configuration. Credentials should come
+    from the platform's normal environment, profile or workload identity mechanism.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{What Happens When You Run \texttt{terraform init}?}
+  \texttt{init} prepares the current module; it does not create infrastructure.
+
+  \vspace{0.8em}
+  \begin{enumerate}
+    \item Terraform reads the \texttt{required\_providers} block.
+    \item It downloads a compatible provider plugin.
+    \item It records the exact selected version in \texttt{.terraform.lock.hcl}.
+  \end{enumerate}
+
+  \vspace{0.8em}
+  \begin{block}{Team habit}
+    Commit the lock file. Everyone and CI then start from the same provider selection.
+  \end{block}
+
+  \vspace{0.8em}
+  \textcolor{SecondaryAccent}{\textbf{So far:}} Terraform can talk to AWS, but we have not
+  asked it to manage anything.
+\end{frame}
+
+\begin{frame}[fragile]{A Resource Is an Object Terraform Manages}
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+resource "aws_s3_bucket" "assets" {
+  bucket = "payments-staging-assets"
+}
+  \end{lstlisting}
+
+  \vspace{0.5em}
+  \begin{itemize}
+    \item \textcolor{PrimaryAccent}{\texttt{resource}} declares an object Terraform will manage.
+    \item \textcolor{SecondaryAccent}{\texttt{aws\_s3\_bucket}} is the resource type, defined by the provider.
+    \item \textcolor{SecondaryAccent}{\texttt{assets}} is the local name, chosen by us.
+    \item Together, the type and name form the resource's address:
+    \textcolor{SecondaryAccent}{\texttt{aws\_s3\_bucket.assets}}.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Inside a Block: Arguments and Nested Blocks}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Argument}
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+bucket = "payments-assets"
+    \end{lstlisting}
+    Assigns an expression to a named setting.
+
+    \column{0.48\textwidth}
+    \textbf{Nested block}
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+rule {
+  status = "Enabled"
+}
+    \end{lstlisting}
+    Groups related settings into a structure.
+  \end{columns}
+
+  \vspace{1em}
+  \begin{block}{The provider documentation is the contract}
+    It tells us which arguments are required, which blocks are valid, and which attributes
+    become available after creation.
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{References Connect Managed Objects}
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+resource "aws_s3_bucket_lifecycle_configuration" "assets" {
+  bucket = aws_s3_bucket.assets.id
+
+  rule {
+    id     = "archive-old-assets"
+    status = "Enabled"
+  }
+}
+  \end{lstlisting}
+
+  \textcolor{SecondaryAccent}{\texttt{aws\_s3\_bucket.assets.id}} means:
+  \begin{itemize}
+    \item find the resource at \textcolor{SecondaryAccent}{\texttt{aws\_s3\_bucket.assets}};
+    \item read its resulting \textcolor{SecondaryAccent}{\texttt{id}};
+    \item use that value here.
+  \end{itemize}
+
+  \vspace{0.8em}
+  \textcolor{SecondaryAccent}{\textbf{Terraform also learns the order:}}
+  create or read the bucket before configuring its lifecycle.
+\end{frame}
+
+\begin{frame}[fragile]{A Variable Is an Input to the Module}
+  The declaration defines what the module accepts:
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+variable "environment" {
+  description = "Environment this bucket belongs to"
+  type        = string
+  nullable    = false
+}
+  \end{lstlisting}
+
+  The resource reads that input as \texttt{var.environment}:
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+bucket = "payments-${var.environment}-assets"
+  \end{lstlisting}
+
+  \begin{block}{Why declare a type?}
+    Terraform can reject an invalid input before it attempts a remote change.
+  \end{block}
+\end{frame}
+
+\begin{frame}[fragile]{Declaring a Variable Is Not Assigning Its Value}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{The module declares}
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+variable "environment" {
+  type = string
+}
+    \end{lstlisting}
+    Usually stored in \textcolor{SecondaryAccent}{\texttt{variables.tf}}.
+
+    \column{0.48\textwidth}
+    \textbf{The caller supplies}
+    \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+environment = "staging"
+    \end{lstlisting}
+    For example, in \textcolor{SecondaryAccent}{\texttt{staging.tfvars}}.
+  \end{columns}
+
+  \vspace{1em}
+  A team can instead inject values through CI or \texttt{TF\_VAR\_...}.
+
+  \begin{alertblock}{Security note}
+  Never put secrets in a committed \textcolor{SecondaryAccent}{\texttt{.tfvars}} file.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}[fragile]{A Local Names a Value Calculated Here}
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+locals {
+  resource_name = "payments-${var.environment}"
+  common_tags = {
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
+}
+  \end{lstlisting}
+
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Variable: \textcolor{SecondaryAccent}{\texttt{var.environment}}}
+
+    Supplied by the caller; part of the module's interface.
+
+    \column{0.48\textwidth}
+    \textbf{Local: \textcolor{SecondaryAccent}{\texttt{local.resource\_name}}}
+
+    Derived inside the module; removes repetition and gives an expression a useful name.
+  \end{columns}
+\end{frame}
+
+\begin{frame}[fragile]{Now Read the Whole Value Flow}
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+locals {
+  resource_name = "payments-${var.environment}"
+}
+resource "aws_s3_bucket" "assets" {
+  bucket = "${local.resource_name}-assets"
+}
+  \end{lstlisting}
+
+  \vspace{0.5em}
+  \begin{columns}[T]
+    \column{0.31\textwidth}
+    \textcolor{PrimaryAccent}{\textbf{1. Input variable}}
+
+    \textcolor{SecondaryAccent}{\texttt{var.environment}}
+
+    \small Supplied as \textcolor{SecondaryAccent}{\texttt{staging}}.
+
+    \column{0.31\textwidth}
+    \textcolor{PrimaryAccent}{\textbf{2. Calculated local}}
+
+    \textcolor{SecondaryAccent}{\texttt{local.resource\_name}}
+
+    \small Becomes \textcolor{SecondaryAccent}{\texttt{payments-staging}}.
+
+    \column{0.31\textwidth}
+    \textcolor{PrimaryAccent}{\textbf{3. Resource argument}}
+
+    \texttt{bucket}
+
+    \small Receives
+    \textcolor{SecondaryAccent}{\texttt{payments-staging-assets}}.
+  \end{columns}
+
+  \vspace{1.6em}
+  \textcolor{SecondaryAccent}{\textbf{The idea:}} one input can feed a local, and that local
+  can then feed many resource arguments.
+\end{frame}
+
+\begin{frame}{Files Are for Humans; the Directory Is the Module}
+  Terraform loads all \texttt{.tf} files in one directory together as a \textbf{module}.
+
+  \vspace{0.6em}
+  \begin{center}
+    \small
+    \renewcommand{\arraystretch}{1.3}
+    \arrayrulecolor{gray}
+    \begin{tabular}{|p{0.31\textwidth}|p{0.55\textwidth}|}
+      \hline
+      \rowcolor{PrimaryAccent}
+      \textbf{File} & \textbf{Typical purpose} \\
+      \hline
+      \texttt{versions.tf} & Provider requirements \\
+      \hline
+      \texttt{providers.tf} & Provider configuration \\
+      \hline
+      \texttt{variables.tf} & Input contracts \\
+      \hline
+      \texttt{main.tf} & Resources and local values \\
+      \hline
+      \texttt{outputs.tf} & Values exposed to callers \\
+      \hline
+    \end{tabular}
+  \end{center}
+
+  \vspace{0.5em}
+  \textcolor{SecondaryAccent}{\textbf{Important:}} file order does not control creation
+  order. References between values and resources do.
+\end{frame}
+
+\section{Use the workflow}
+
+\begin{frame}[fragile]{Terraform Commands: The Two Halves}
+  \begin{lstlisting}[basicstyle=\ttfamily\scriptsize\color{CodeText}]
+terraform init
+
+terraform fmt
+terraform validate
+
+terraform plan
+terraform apply
+  \end{lstlisting}
+
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Prepare and check}
+
+    Work on the local configuration.
+
+    \column{0.48\textwidth}
+    \textbf{Preview and change}
+
+    Interact with the target platform.
+  \end{columns}
+
+  \vspace{2em}
+  Run these commands from the module directory. \texttt{init} is also needed when provider
+  requirements or the state backend change.
+\end{frame}
+
+\begin{frame}{\texttt{fmt} and \texttt{validate} Answer Different Questions}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \begin{block}{\texttt{terraform fmt}}
+      ``Is the configuration formatted consistently?''
+    \end{block}
+
+    It rewrites files into Terraform's standard style.
+
+    \column{0.48\textwidth}
+    \begin{block}{\texttt{terraform validate}}
+      ``Is the configuration internally valid?''
+    \end{block}
+
+    It checks syntax, types and references without proposing a remote change.
+  \end{columns}
+
+  \vspace{1em}
+  \textcolor{SecondaryAccent}{\textbf{Both are fast feedback.}} Neither proves that the
+  change is safe for a particular account or environment; that is the plan's job.
+\end{frame}
+
+\begin{frame}{A Plan Is Terraform's Proposed Change}
+  \texttt{terraform plan} brings together three views:
+
+  \vspace{0.8em}
+  \begin{center}
+    desired configuration
+    \quad + \quad
+    Terraform state
+    \quad + \quad
+    current provider API data
+  \end{center}
+
+  \vspace{1em}
+  The result is a preview of what \emph{would} change. Planning may read remote systems
+  and require credentials, but it does not apply the proposed infrastructure changes.
+
+  \begin{alertblock}{A successful plan is not approval}
+    ``Terraform can do this'' is different from ``we intend to do this.'' Read the result.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Read the Plan as a Code Review}
+  Focus first on Terraform's action symbols:
+
+  \vspace{0.5em}
+  \begin{center}
+    \begin{tabular}{c l p{0.50\textwidth}}
+      \toprule
+      \textbf{Symbol} & \textbf{Action} & \textbf{Question to ask} \\
+      \midrule
+      \textcolor{SecondaryAccent}{\texttt{+}} & create & Is this object expected and named correctly? \\
+      \textcolor{AlertColor}{\texttt{-}} & destroy & Why is it being removed? Is this expected?  \\
+      \textcolor{PrimaryAccent}{\texttt{\textasciitilde}} & update & Is each changed field intentional? \\
+      \textcolor{AlertColor}{\texttt{-/+}} & replace & What is being replaced? Is potential downtime/data loss acceptable? \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+
+  \vspace{0.5em}
+  \begin{alertblock}{Stop condition}
+    Do not apply an unexplained destroy or replacement. The plan is the last inexpensive
+    place to catch a wrong value, wrong target account, or typo.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Apply Only the Plan You Understand}
+  A safe review answers four questions:
+
+  \vspace{0.5em}
+  \begin{enumerate}
+    \item Am I targeting the intended account and environment?
+    \item Are the resource addresses the ones I expected?
+    \item Can I explain every create, update, replacement and destroy?
+    \item Is the operational impact acceptable?
+  \end{enumerate}
+
+  \vspace{0.8em}
+  \begin{block}{The boundary}
+    \texttt{apply} is the explicit command that asks the provider to change remote objects.
+  \end{block}
+\end{frame}
+
+\begin{frame}{State Is Terraform's Memory}
+  \textbf{State} records which remote object belongs to each resource address.
+
+  \vspace{0.4em}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Configuration says}
+    \begin{itemize}
+      \item ``Manage a bucket at this address.''
+      \item ``These settings are desired.''
+    \end{itemize}
+
+    \column{0.48\textwidth}
+    \textbf{State remembers}
+    \begin{itemize}
+      \item ``That address maps to bucket ID 123.''
+      \item Provider metadata needed to manage it.
+    \end{itemize}
+  \end{columns}
+
+  \vspace{0.8em}
+  \begin{alertblock}{Do not delete state to ``start over''}
+    Removing Terraform's mapping does not remove the remote object; it makes Terraform
+    forget that the object is already managed.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Drift Is a Difference Terraform Discovers}
+  \begin{center}
+    \small
+    configuration says A
+    \quad $\neq$ \quad
+    provider API reports B
+  \end{center}
+
+  \vspace{0.8em}
+  \textbf{Drift} often appears when someone changes a managed object directly in its UI or API.
+
+  \vspace{0.6em}
+  \begin{enumerate}
+    \item A plan reads the remote object and reveals the difference.
+    \item The team decides which version is intended.
+    \item Code and infrastructure are reconciled through a reviewed change.
+  \end{enumerate}
+
+  \vspace{0.6em}
+  \textcolor{SecondaryAccent}{\textbf{Habit:}} use Terraform as the normal route for changing
+  objects Terraform manages.
+\end{frame}
+
+\section{Work safely as a team}
+
+\begin{frame}{Shared Work Needs Shared State}
+  Local \texttt{terraform.tfstate} is suitable for learning, not for a team managing the
+  same infrastructure.
+
+  \vspace{0.6em}
+  \begin{block}{Remote backend}
+    Stores state in a shared, durable location so engineers and CI use the same memory.
+  \end{block}
+
+  \begin{block}{Locking}
+    Prevents two writers from changing the same state at the same time.
+  \end{block}
+
+  \begin{alertblock}{Treat state as sensitive operational data}
+    It can contain resource details and sometimes secret values. Encrypt it, restrict access,
+    keep backups, and never commit it to Git.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{A Safe Team Change Has One Clear Path}
+  \begin{center}
+    branch
+    $\longrightarrow$ check
+    $\longrightarrow$ plan
+    $\longrightarrow$ review
+    $\longrightarrow$ apply
+    $\longrightarrow$ verify
+  \end{center}
+
+  \vspace{0.8em}
+  \begin{itemize}
+    \item Keep the code change focused; separate resource changes from provider upgrades.
+    \item Review the plan for the intended environment in the pull request.
+    \item Let CI or a designated operator apply with environment-scoped credentials.
+    \item Verify the remote result after apply.
+  \end{itemize}
+
+  \begin{block}{The invariant}
+    The code reviewed, the values planned and the infrastructure applied must describe the
+    same change.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Three More Terms You Will Meet}
+  \begin{description}
+    \item[Output] A value a module exposes to its caller, such as a bucket ID.
+    \item[Data source] A read-only lookup of an object Terraform does not own here.
+    \item[Child module] A reusable Terraform package called by another module.
+  \end{description}
+
+  \vspace{0.8em}
+  \begin{block}{A sensible order for learning}
+    Start with resources, variables and local values in one module. Add outputs when callers
+    need results, data sources when ownership is elsewhere, and child modules when reuse is
+    useful -- just like when you program and feel the need to refactor.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Pause When the Plan Surprises You}
+  Do not apply yet if you see:
+
+  \vspace{0.5em}
+  \begin{itemize}
+    \item an unexplained destroy or replacement;
+    \item resources from the wrong account or environment;
+    \item unrelated changes you did not intend; or
+    \item a provider or lock-file upgrade mixed into an ordinary resource change.
+  \end{itemize}
+
+  \vspace{0.7em}
+  Check the selected values, credentials, provider configuration, resource references and
+  state before trying again.
+
+  \begin{alertblock}{Recovery tools are not everyday shortcuts}
+    Commands such as \texttt{-target}, import and direct state manipulation require a specific,
+    understood recovery plan.
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{What You Should Now Be Able to Do}
+  \begin{enumerate}
+    \item Explain the job of a provider and the difference between requiring and configuring it.
+    \item Read a resource, its arguments, nested blocks, variables, locals and references.
+    \item Follow \texttt{init} $\rightarrow$ \texttt{fmt} $\rightarrow$ \texttt{validate}
+      $\rightarrow$ \texttt{plan} $\rightarrow$ \texttt{apply}.
+    \item Treat the plan as a change review and state as sensitive shared operational data.
+    \item Recognise when a proposed change is safe to apply---and when to stop.
+  \end{enumerate}
+
+  \vspace{1em}
+  \begin{alertblock}{One principle to remember}
+    \textbf{Never apply a Terraform plan you cannot explain.}
+  \end{alertblock}
+\end{frame}
+
+\begin{frame}{Questions}
+  \begin{center}
+    \vspace{1.5em}
+    \Huge \textcolor{PrimaryAccent}{Questions?}
+    \vspace{1.5em}
+
+    {\large Suggested next step: make one safe, non-production Terraform change.}
+    \vspace{0.8em}
+
+    {\small \textcolor{gray}{Start with any small module; plan before you apply.}}
+  \end{center}
+\end{frame}
+
+\appendix
+
+\begin{frame}[allowframebreaks]{References}
+  \small
+  \begin{itemize}
+    \item Terraform documentation: \url{https://developer.hashicorp.com/terraform/docs}
+    \item Terraform CLI reference: \url{https://developer.hashicorp.com/terraform/cli}
+    \item Terraform Registry: \url{https://registry.terraform.io/}
+  \end{itemize}
+\end{frame}
+
+\end{document}
