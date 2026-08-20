@@ -78,6 +78,23 @@
 
 % CODE HIGHLIGHTING
 
+% Terraform & HashiCorp Configuration Language (HCL)
+\lstdefinelanguage{Terraform}{
+	sensitive=true,
+	morekeywords={
+		terraform,required_providers,required_version,provider,resource,data,module,
+		variable,locals,output,backend,cloud,workspace,lifecycle,depends_on,
+		count,for_each,dynamic,provisioner,connection,validation,precondition,
+		postcondition,check,assert,source,version,type,description,default,nullable,
+		tags,bucket,region,rule,status,id,merge
+	},
+	morekeywords=[2]{true,false,null},
+	morecomment=[l]{\#},
+	morecomment=[l]{//},
+	morecomment=[s]{/*}{*/},
+	morestring=[b]"
+}
+
 \lstset{
 	autogobble=true,
 	basicstyle=\ttfamily\small\color{CodeText},
